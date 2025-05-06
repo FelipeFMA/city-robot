@@ -1,5 +1,9 @@
 # 🤖 Robot City Simulation
 
+![image](https://github.com/user-attachments/assets/b1db1d8e-8ee9-4af0-9334-bb4451db9df6)
+![image](https://github.com/user-attachments/assets/860240bb-48e9-4eae-9820-986e95468ac6)
+
+
 ![Robot City Simulation](https://img.shields.io/badge/Robot-City_Simulation-blue)
 ![HTML](https://img.shields.io/badge/HTML-5-orange)
 ![CSS](https://img.shields.io/badge/CSS-3-blue)
