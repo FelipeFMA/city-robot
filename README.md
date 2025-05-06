@@ -243,3 +243,7 @@ The algorithm includes special handling for:
 ---
 
 made with ❤️ pra ganhar nota do renatinho.
+
+## 👨‍💻 Authors
+- Felipe Avelar
+- Ulyses Goes
