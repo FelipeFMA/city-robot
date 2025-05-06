@@ -238,4 +238,4 @@ The algorithm includes special handling for:
 
 ---
 
-Developed with ❤️ for Computational Thinking course
+made with ❤️ pra ganhar nota do renatinho.
