@@ -67,6 +67,7 @@
                         <div class="objective-content">
                             <h3>Find Supplies</h3>
                             <p>Locate and collect medical supplies from the Supply Pickup point (green)</p>
+                            <p><strong>Note:</strong> Robot can only carry one supply at a time</p>
                         </div>
                     </li>
                     <li class="objective-item">
@@ -74,13 +75,21 @@
                         <div class="objective-content">
                             <h3>Deliver to Hospital</h3>
                             <p>Transport the supplies to any Hospital (pink) on the map</p>
+                            <p><strong>Goal:</strong> Make 3 separate deliveries</p>
                         </div>
                     </li>
                     <li class="objective-item">
                         <span class="objective-number">3</span>
                         <div class="objective-content">
+                            <h3>Return to Supply Pickup</h3>
+                            <p>After each delivery, return to Supply Pickup for more supplies</p>
+                        </div>
+                    </li>
+                    <li class="objective-item">
+                        <span class="objective-number">4</span>
+                        <div class="objective-content">
                             <h3>Return Home</h3>
-                            <p>Navigate back to the starting point (0,0) to complete the mission</p>
+                            <p>After all deliveries, navigate back to the starting point (0,0)</p>
                         </div>
                     </li>
                 </ul>
@@ -89,6 +98,8 @@
                     <p>• Visit Charging Stations when energy is low</p>
                     <p>• Refuel at Fuel Stations when fuel is low</p>
                     <p>• Avoid Danger Zones that drain resources</p>
+                    <p>• Robot must complete the delivery cycle 3 times</p>
+                    <p>• Each cycle: Pickup → Hospital → Repeat</p>
                 </div>
             </div>
         </div>

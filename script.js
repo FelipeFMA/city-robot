@@ -19,10 +19,11 @@ const ROBOT = {
     fuel: 50,
     maxFuel: 50,
     cargo: 0,
-    maxCargo: 2,
+    maxCargo: 1, // Only carry one supply at a time
     isMoving: false,
     hasSupplies: false,
     deliveredSupplies: false,
+    deliveryCount: 0, // Track how many deliveries have been made
     returnedToStart: false,
     recentPositions: [], // Track recent positions to avoid loops
     maxRecentPositions: 10 // Number of recent positions to remember
@@ -322,6 +323,7 @@ function resetSimulation() {
     ROBOT.cargo = 0;
     ROBOT.hasSupplies = false;
     ROBOT.deliveredSupplies = false;
+    ROBOT.deliveryCount = 0; // Reset delivery count
     ROBOT.returnedToStart = false;
     ROBOT.recentPositions = []; // Clear recent positions
     createCityMap();
@@ -411,21 +413,24 @@ function moveRobot(dx, dy) {
             // This requires knowing our current goal, which we'll infer from the robot's state
             let targetX, targetY;
 
-            if (!ROBOT.hasSupplies && !ROBOT.deliveredSupplies) {
-                const supplyPickup = findNearestCellOfType(CELL_TYPES.SUPPLY_PICKUP);
-                if (supplyPickup) {
-                    targetX = supplyPickup.x;
-                    targetY = supplyPickup.y;
-                }
-            } else if (ROBOT.hasSupplies && !ROBOT.deliveredSupplies) {
+            if (ROBOT.deliveredSupplies && !ROBOT.returnedToStart) {
+                // Final objective: Return to start after completing all deliveries
+                targetX = 0;
+                targetY = 0;
+            } else if (ROBOT.hasSupplies) {
+                // Deliver current supplies to hospital
                 const hospital = findNearestCellOfType(CELL_TYPES.HOSPITAL);
                 if (hospital) {
                     targetX = hospital.x;
                     targetY = hospital.y;
                 }
-            } else if (ROBOT.deliveredSupplies && !ROBOT.returnedToStart) {
-                targetX = 0;
-                targetY = 0;
+            } else {
+                // Get supplies from the supply pickup location
+                const supplyPickup = findNearestCellOfType(CELL_TYPES.SUPPLY_PICKUP);
+                if (supplyPickup) {
+                    targetX = supplyPickup.x;
+                    targetY = supplyPickup.y;
+                }
             }
 
             if (targetX !== undefined && targetY !== undefined) {
@@ -500,12 +505,21 @@ function checkCellActions() {
 
     switch (currentCell) {
         case CELL_TYPES.HOSPITAL:
-            if (ROBOT.hasSupplies && !ROBOT.deliveredSupplies) {
+            if (ROBOT.hasSupplies) {
                 ROBOT.hasSupplies = false;
-                ROBOT.deliveredSupplies = true;
                 ROBOT.cargo--;
-                logDecision('Delivered supplies to the hospital!');
-                updateStatus('Supplies delivered! Return to starting point.');
+                ROBOT.deliveryCount++;
+                logDecision(`Delivered supplies to the hospital! Total deliveries: ${ROBOT.deliveryCount}`);
+
+                // After 3 deliveries, complete the mission
+                if (ROBOT.deliveryCount >= 3) {
+                    ROBOT.deliveredSupplies = true;
+                    updateStatus('All required deliveries complete! Return to starting point.');
+                } else {
+                    // Reset deliveredSupplies flag to get more supplies
+                    ROBOT.deliveredSupplies = false;
+                    updateStatus('Delivery complete! Find more supplies to deliver.');
+                }
             }
             break;
 
@@ -561,7 +575,7 @@ function checkCellActions() {
             break;
 
         case CELL_TYPES.SUPPLY_PICKUP:
-            if (!ROBOT.hasSupplies && !ROBOT.deliveredSupplies && ROBOT.cargo < ROBOT.maxCargo) {
+            if (!ROBOT.hasSupplies && ROBOT.cargo < ROBOT.maxCargo) {
                 ROBOT.hasSupplies = true;
                 ROBOT.cargo++;
                 logDecision('Picked up supplies for the hospital.');
@@ -608,24 +622,24 @@ function robotAI() {
     }
 
     // Main mission objectives
-    if (!ROBOT.hasSupplies && !ROBOT.deliveredSupplies) {
-        // First objective: Get supplies from the supply pickup location
-        const supplyPickup = findNearestCellOfType(CELL_TYPES.SUPPLY_PICKUP);
-        if (supplyPickup) {
-            logDecision('Moving towards supply pickup location.');
-            moveTowardsTarget(supplyPickup.x, supplyPickup.y);
-        }
-    } else if (ROBOT.hasSupplies && !ROBOT.deliveredSupplies) {
-        // Second objective: Deliver to hospital
+    if (ROBOT.deliveredSupplies && !ROBOT.returnedToStart) {
+        // Final objective: Return to start after completing all deliveries
+        logDecision('All deliveries complete. Returning to starting point.');
+        moveTowardsTarget(0, 0);
+    } else if (ROBOT.hasSupplies) {
+        // Deliver current supplies to hospital
         const hospital = findNearestCellOfType(CELL_TYPES.HOSPITAL);
         if (hospital) {
             logDecision('Moving towards hospital to deliver supplies.');
             moveTowardsTarget(hospital.x, hospital.y);
         }
-    } else if (ROBOT.deliveredSupplies && !ROBOT.returnedToStart) {
-        // Third objective: Return to start
-        logDecision('Mission accomplished. Returning to starting point.');
-        moveTowardsTarget(0, 0);
+    } else {
+        // Get supplies from the supply pickup location
+        const supplyPickup = findNearestCellOfType(CELL_TYPES.SUPPLY_PICKUP);
+        if (supplyPickup) {
+            logDecision('Moving towards supply pickup location.');
+            moveTowardsTarget(supplyPickup.x, supplyPickup.y);
+        }
     }
 }
 
@@ -772,12 +786,15 @@ function handleResourceManagement() {
         // Find the current mission target
         let missionTarget = null;
 
-        if (!ROBOT.hasSupplies && !ROBOT.deliveredSupplies) {
-            missionTarget = findNearestCellOfType(CELL_TYPES.SUPPLY_PICKUP);
-        } else if (ROBOT.hasSupplies && !ROBOT.deliveredSupplies) {
-            missionTarget = findNearestCellOfType(CELL_TYPES.HOSPITAL);
-        } else if (ROBOT.deliveredSupplies && !ROBOT.returnedToStart) {
+        if (ROBOT.deliveredSupplies && !ROBOT.returnedToStart) {
+            // Final objective: Return to start after completing all deliveries
             missionTarget = { x: 0, y: 0 };
+        } else if (ROBOT.hasSupplies) {
+            // Deliver current supplies to hospital
+            missionTarget = findNearestCellOfType(CELL_TYPES.HOSPITAL);
+        } else {
+            // Get supplies from the supply pickup location
+            missionTarget = findNearestCellOfType(CELL_TYPES.SUPPLY_PICKUP);
         }
 
         if (missionTarget) {
