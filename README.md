@@ -219,7 +219,7 @@ The algorithm includes special handling for:
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/robot-city-simulation.git
+   git clone https://github.com/felipefma/robot-city-simulation.git
    ```
 
 2. Navigate to the project directory:
