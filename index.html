@@ -1,0 +1,127 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot City Simulation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Robot City Simulation</h1>
+        </header>
+
+        <div class="dashboard">
+            <div class="resources">
+                <h2>Robot Resources</h2>
+                <div class="resource-item">
+                    <label>Energy:</label>
+                    <div class="progress-container">
+                        <div id="energy-bar" class="progress-bar"></div>
+                        <span id="energy-value">100/100</span>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <label>Fuel:</label>
+                    <div class="progress-container">
+                        <div id="fuel-bar" class="progress-bar"></div>
+                        <span id="fuel-value">50/50</span>
+                    </div>
+                </div>
+                <div class="resource-item">
+                    <label>Cargo:</label>
+                    <span id="cargo-value">0/2</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <h2>Controls</h2>
+                <div class="control-buttons">
+                    <button id="start-btn">Start</button>
+                    <button id="stop-btn">Stop</button>
+                    <button id="reset-btn">Reset</button>
+                </div>
+                <div class="speed-control">
+                    <label for="speed">Speed:</label>
+                    <input type="range" id="speed" min="1" max="10" value="5">
+                </div>
+                <div class="mode-selection">
+                    <label>Mode:</label>
+                    <div class="radio-group">
+                        <input type="radio" id="auto-mode" name="mode" value="auto" checked>
+                        <label for="auto-mode">Auto</label>
+                        <input type="radio" id="manual-mode" name="mode" value="manual">
+                        <label for="manual-mode">Manual</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="objectives">
+                <h2>Objectives</h2>
+                <ul id="objectives-list">
+                    <li>Deliver supplies to Hospital B</li>
+                    <li>Return to starting point</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="simulation-area">
+            <div id="city-grid"></div>
+            <div class="status-panel">
+                <h2>Status</h2>
+                <div id="status-message">Robot is ready to start.</div>
+                <h3>Decision Log</h3>
+                <div id="decision-log" class="log-container"></div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <h2>Map Legend</h2>
+            <div class="legend-items">
+                <div class="legend-item">
+                    <div class="legend-color street"></div>
+                    <span>Street</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color building"></div>
+                    <span>Building</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color hospital"></div>
+                    <span>Hospital</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color fuel-station"></div>
+                    <span>Fuel Station</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color charging-station"></div>
+                    <span>Charging Station</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color danger-zone"></div>
+                    <span>Danger Zone</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color supply-pickup"></div>
+                    <span>Supply Pickup</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color school"></div>
+                    <span>School</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color robot"></div>
+                    <span>Robot</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color obstacle"></div>
+                    <span>Mobile Obstacle</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
