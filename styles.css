@@ -209,6 +209,12 @@ h3 {
     color: #333;
     font-weight: bold;
     text-shadow: 0 0 3px rgba(255, 255, 255, 0.9);
+    transition: color 0.3s ease;
+}
+
+[data-theme="dark"] .progress-container span {
+    color: #fff;
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
 }
 
 .control-buttons {
@@ -349,6 +355,12 @@ input[type="range"]::-webkit-slider-thumb:hover {
     font-weight: normal;
     text-align: center;
     flex: 1;
+    color: #333; /* Dark text for light mode */
+}
+
+[data-theme="dark"] .radio-group label {
+    background-color: #444;
+    color: #e0e0e0; /* Light text for dark mode */
 }
 
 .radio-group input[type="radio"]:checked + label {
@@ -371,7 +383,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, background-color 0.3s ease;
+}
+
+[data-theme="dark"] .objective-item {
+    background-color: #333;
 }
 
 .objective-item:hover {
@@ -398,12 +414,22 @@ input[type="range"]::-webkit-slider-thumb:hover {
     margin: 0 0 5px 0;
     color: #2c3e50;
     font-size: 1.1rem;
+    transition: color 0.3s ease;
+}
+
+[data-theme="dark"] .objective-content h3 {
+    color: #e0e0e0;
 }
 
 .objective-content p {
     margin: 0;
     color: #7f8c8d;
     font-size: 0.9rem;
+    transition: color 0.3s ease;
+}
+
+[data-theme="dark"] .objective-content p {
+    color: #aaa;
 }
 
 .resource-tips {
@@ -413,17 +439,32 @@ input[type="range"]::-webkit-slider-thumb:hover {
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     border-left: 4px solid #3498db;
+    transition: background-color 0.3s ease;
+}
+
+[data-theme="dark"] .resource-tips {
+    background-color: #333;
 }
 
 .resource-tips h3 {
     margin-top: 0;
     color: #2c3e50;
+    transition: color 0.3s ease;
+}
+
+[data-theme="dark"] .resource-tips h3 {
+    color: #e0e0e0;
 }
 
 .resource-tips p {
     margin: 5px 0;
     color: #7f8c8d;
     font-size: 0.9rem;
+    transition: color 0.3s ease;
+}
+
+[data-theme="dark"] .resource-tips p {
+    color: #aaa;
 }
 
 .simulation-area {
@@ -664,6 +705,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     border-radius: 20px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     transition: transform 0.3s ease, background-color 0.3s ease;
+    color: var(--text-color); /* Use the theme text color */
 }
 
 .legend-item:hover {
