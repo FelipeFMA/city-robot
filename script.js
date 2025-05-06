@@ -56,6 +56,7 @@ const autoModeRadio = document.getElementById('auto-mode');
 const manualModeRadio = document.getElementById('manual-mode');
 const statusMessage = document.getElementById('status-message');
 const decisionLog = document.getElementById('decision-log');
+const themeToggle = document.getElementById('theme-toggle');
 
 // Initialize the simulation
 function initSimulation() {
@@ -64,6 +65,7 @@ function initSimulation() {
     placeMobileObstacles();
     placeRobot();
     updateResourceDisplay();
+    initThemeToggle();
 
     // Event listeners
     startBtn.addEventListener('click', startSimulation);
@@ -72,9 +74,39 @@ function initSimulation() {
     speedSlider.addEventListener('input', updateSimulationSpeed);
     autoModeRadio.addEventListener('change', setAutoMode);
     manualModeRadio.addEventListener('change', setManualMode);
+    themeToggle.addEventListener('click', toggleTheme);
 
     // Add keyboard controls for manual mode
     document.addEventListener('keydown', handleKeyboardInput);
+}
+
+// Initialize theme based on user preference
+function initThemeToggle() {
+    // Check if user has a saved preference
+    const savedTheme = localStorage.getItem('theme');
+
+    if (savedTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        themeToggle.textContent = '☀️';
+    } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        themeToggle.textContent = '🌙';
+    }
+}
+
+// Toggle between light and dark mode
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+
+    if (currentTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('theme', 'light');
+        themeToggle.textContent = '🌙';
+    } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', 'dark');
+        themeToggle.textContent = '☀️';
+    }
 }
 
 // Create the city map with different cell types
@@ -216,6 +248,7 @@ function renderRobot() {
     if (cell) {
         const robotElement = document.createElement('div');
         robotElement.className = 'robot';
+        robotElement.textContent = '🤖'; // Use robot emoji
         cell.appendChild(robotElement);
     }
 }
@@ -350,15 +383,86 @@ function moveRobot(dx, dy) {
     if (
         newX >= 0 && newX < GRID_SIZE &&
         newY >= 0 && newY < GRID_SIZE &&
-        cityMap[newY][newX] !== CELL_TYPES.BUILDING
+        cityMap[newY][newX] !== CELL_TYPES.BUILDING &&
+        cityMap[newY][newX] !== CELL_TYPES.DANGER_ZONE // Never enter danger zones
     ) {
         // Check for mobile obstacles
         const hasObstacle = mobileObstacles.some(obs => obs.x === newX && obs.y === newY);
 
         if (hasObstacle) {
-            // Avoid obstacle
+            // Avoid obstacle by finding an alternative path
             ROBOT.energy -= COSTS.OBSTACLE_AVOID.energy;
-            logDecision(`Obstacle detected at (${newX}, ${newY}). Avoiding and staying in place.`);
+            logDecision(`Obstacle detected at (${newX}, ${newY}). Finding alternative path.`);
+
+            // Try to find an alternative direction that's not blocked
+            const directions = [
+                { dx: 0, dy: -1 }, // up
+                { dx: 1, dy: 0 },  // right
+                { dx: 0, dy: 1 },  // down
+                { dx: -1, dy: 0 }  // left
+            ];
+
+            // Filter out the direction we just tried
+            const alternativeDirections = directions.filter(dir =>
+                !(dir.dx === dx && dir.dy === dy)
+            );
+
+            // Sort by how much they reduce the Manhattan distance to our goal
+            // This requires knowing our current goal, which we'll infer from the robot's state
+            let targetX, targetY;
+
+            if (!ROBOT.hasSupplies && !ROBOT.deliveredSupplies) {
+                const supplyPickup = findNearestCellOfType(CELL_TYPES.SUPPLY_PICKUP);
+                if (supplyPickup) {
+                    targetX = supplyPickup.x;
+                    targetY = supplyPickup.y;
+                }
+            } else if (ROBOT.hasSupplies && !ROBOT.deliveredSupplies) {
+                const hospital = findNearestCellOfType(CELL_TYPES.HOSPITAL);
+                if (hospital) {
+                    targetX = hospital.x;
+                    targetY = hospital.y;
+                }
+            } else if (ROBOT.deliveredSupplies && !ROBOT.returnedToStart) {
+                targetX = 0;
+                targetY = 0;
+            }
+
+            if (targetX !== undefined && targetY !== undefined) {
+                alternativeDirections.sort((a, b) => {
+                    const distA = calculateDistance(
+                        ROBOT.position.x + a.dx, ROBOT.position.y + a.dy,
+                        targetX, targetY
+                    );
+                    const distB = calculateDistance(
+                        ROBOT.position.x + b.dx, ROBOT.position.y + b.dy,
+                        targetX, targetY
+                    );
+                    return distA - distB;
+                });
+            }
+
+            // Try each alternative direction
+            for (const dir of alternativeDirections) {
+                const altX = ROBOT.position.x + dir.dx;
+                const altY = ROBOT.position.y + dir.dy;
+
+                if (
+                    altX >= 0 && altX < GRID_SIZE &&
+                    altY >= 0 && altY < GRID_SIZE &&
+                    cityMap[altY][altX] !== CELL_TYPES.BUILDING &&
+                    cityMap[altY][altX] !== CELL_TYPES.DANGER_ZONE &&
+                    !mobileObstacles.some(obs => obs.x === altX && obs.y === altY)
+                ) {
+                    // Found a valid alternative direction
+                    logDecision(`Found alternative path. Moving to (${altX}, ${altY}).`);
+                    moveRobot(dir.dx, dir.dy);
+                    return;
+                }
+            }
+
+            // If no alternative direction is found, stay in place
+            logDecision(`No alternative path found. Waiting for obstacle to move.`);
         } else {
             // Track the current position before moving
             const oldPosition = { x: ROBOT.position.x, y: ROBOT.position.y };
@@ -386,7 +490,7 @@ function moveRobot(dx, dy) {
         updateResourceDisplay();
         checkResourceLevels();
     } else {
-        logDecision(`Cannot move to (${newX}, ${newY}). Path is blocked or out of bounds.`);
+        logDecision(`Cannot move to (${newX}, ${newY}). Path is blocked, in danger zone, or out of bounds.`);
     }
 }
 
@@ -417,10 +521,43 @@ function checkCellActions() {
             logDecision(`Recharged at charging station. Energy: ${oldEnergy} → ${ROBOT.energy}`);
             break;
 
+        // We should never enter a danger zone due to our improved pathfinding
+        // But just in case, handle it with severe penalties
         case CELL_TYPES.DANGER_ZONE:
-            ROBOT.energy -= 5;
-            ROBOT.fuel -= 2;
-            logDecision('Entered danger zone! Energy: -5, Fuel: -2');
+            ROBOT.energy -= 10;
+            ROBOT.fuel -= 5;
+            logDecision('CRITICAL ERROR: Entered danger zone! Energy: -10, Fuel: -5');
+
+            // Immediately try to escape the danger zone
+            const directions = [
+                { dx: 0, dy: -1 }, // up
+                { dx: 1, dy: 0 },  // right
+                { dx: 0, dy: 1 },  // down
+                { dx: -1, dy: 0 }  // left
+            ];
+
+            // Shuffle directions randomly to avoid getting stuck
+            const shuffledDirections = directions.sort(() => Math.random() - 0.5);
+
+            // Try to escape in any valid direction
+            for (const dir of shuffledDirections) {
+                const escapeX = ROBOT.position.x + dir.dx;
+                const escapeY = ROBOT.position.y + dir.dy;
+
+                if (
+                    escapeX >= 0 && escapeX < GRID_SIZE &&
+                    escapeY >= 0 && escapeY < GRID_SIZE &&
+                    cityMap[escapeY][escapeX] !== CELL_TYPES.BUILDING &&
+                    cityMap[escapeY][escapeX] !== CELL_TYPES.DANGER_ZONE &&
+                    !mobileObstacles.some(obs => obs.x === escapeX && obs.y === escapeY)
+                ) {
+                    logDecision(`Emergency escape from danger zone to (${escapeX}, ${escapeY}).`);
+                    ROBOT.position.x = escapeX;
+                    ROBOT.position.y = escapeY;
+                    renderRobot();
+                    break;
+                }
+            }
             break;
 
         case CELL_TYPES.SUPPLY_PICKUP:
@@ -613,39 +750,54 @@ function handleResourceManagement() {
         return true;
     }
 
-    // Avoid danger zones when possible
+    // Proactively scan for and avoid danger zones
     const currentPosition = { x: ROBOT.position.x, y: ROBOT.position.y };
-    const possibleMoves = [
-        { dx: 0, dy: -1 }, // up
-        { dx: 1, dy: 0 },  // right
-        { dx: 0, dy: 1 },  // down
-        { dx: -1, dy: 0 }  // left
-    ];
 
-    for (const move of possibleMoves) {
-        const newX = currentPosition.x + move.dx;
-        const newY = currentPosition.y + move.dy;
+    // Check if we're adjacent to any danger zones and find a safer path
+    const dangerZones = [];
 
-        if (
-            newX >= 0 && newX < GRID_SIZE &&
-            newY >= 0 && newY < GRID_SIZE &&
-            cityMap[newY][newX] === CELL_TYPES.DANGER_ZONE
-        ) {
-            logDecision('Detected danger zone ahead. Taking evasive action.');
-            // Find a safe direction to move
-            for (const safeMove of possibleMoves.filter(m => m !== move)) {
-                const safeX = currentPosition.x + safeMove.dx;
-                const safeY = currentPosition.y + safeMove.dy;
+    // Scan the surrounding area for danger zones (up to 3 cells away)
+    for (let y = Math.max(0, currentPosition.y - 3); y <= Math.min(GRID_SIZE - 1, currentPosition.y + 3); y++) {
+        for (let x = Math.max(0, currentPosition.x - 3); x <= Math.min(GRID_SIZE - 1, currentPosition.x + 3); x++) {
+            if (cityMap[y][x] === CELL_TYPES.DANGER_ZONE) {
+                dangerZones.push({ x, y });
+            }
+        }
+    }
 
-                if (
-                    safeX >= 0 && safeX < GRID_SIZE &&
-                    safeY >= 0 && safeY < GRID_SIZE &&
-                    cityMap[safeY][safeX] !== CELL_TYPES.DANGER_ZONE &&
-                    cityMap[safeY][safeX] !== CELL_TYPES.BUILDING
-                ) {
-                    moveRobot(safeMove.dx, safeMove.dy);
-                    return true;
-                }
+    // If danger zones are detected nearby, plan a path away from them
+    if (dangerZones.length > 0) {
+        logDecision(`Detected ${dangerZones.length} danger zones nearby. Planning safe route.`);
+
+        // Find the current mission target
+        let missionTarget = null;
+
+        if (!ROBOT.hasSupplies && !ROBOT.deliveredSupplies) {
+            missionTarget = findNearestCellOfType(CELL_TYPES.SUPPLY_PICKUP);
+        } else if (ROBOT.hasSupplies && !ROBOT.deliveredSupplies) {
+            missionTarget = findNearestCellOfType(CELL_TYPES.HOSPITAL);
+        } else if (ROBOT.deliveredSupplies && !ROBOT.returnedToStart) {
+            missionTarget = { x: 0, y: 0 };
+        }
+
+        if (missionTarget) {
+            // Use A* pathfinding to find a safe path to the target
+            // (A* already avoids danger zones completely)
+            const path = findPath(
+                currentPosition.x,
+                currentPosition.y,
+                missionTarget.x,
+                missionTarget.y
+            );
+
+            if (path && path.length > 0) {
+                const nextStep = path[0];
+                const dx = nextStep.x - currentPosition.x;
+                const dy = nextStep.y - currentPosition.y;
+
+                logDecision(`Taking safe path away from danger zones.`);
+                moveRobot(dx, dy);
+                return true;
             }
         }
     }
@@ -678,7 +830,108 @@ function calculateDistance(x1, y1, x2, y2) {
     return Math.abs(x1 - x2) + Math.abs(y1 - y2);
 }
 
-// Move towards a target using improved pathfinding
+// A* Pathfinding algorithm to find the shortest path
+function findPath(startX, startY, targetX, targetY) {
+    // Priority queue for open nodes
+    const openSet = [];
+    // Set of visited nodes
+    const closedSet = new Set();
+    // Map to store the best previous node for each node
+    const cameFrom = new Map();
+    // Cost from start to each node
+    const gScore = new Map();
+    // Estimated total cost from start to goal through each node
+    const fScore = new Map();
+
+    // Initialize start node
+    const startKey = `${startX},${startY}`;
+    openSet.push({ x: startX, y: startY, key: startKey });
+    gScore.set(startKey, 0);
+    fScore.set(startKey, calculateDistance(startX, startY, targetX, targetY));
+
+    while (openSet.length > 0) {
+        // Sort open set by fScore (lowest first)
+        openSet.sort((a, b) => {
+            return (fScore.get(a.key) || Infinity) - (fScore.get(b.key) || Infinity);
+        });
+
+        // Get the node with lowest fScore
+        const current = openSet.shift();
+
+        // If we reached the target
+        if (current.x === targetX && current.y === targetY) {
+            // Reconstruct the path
+            return reconstructPath(cameFrom, current);
+        }
+
+        // Add current to closed set
+        closedSet.add(current.key);
+
+        // Check all neighbors
+        const neighbors = [
+            { dx: 0, dy: -1 }, // up
+            { dx: 1, dy: 0 },  // right
+            { dx: 0, dy: 1 },  // down
+            { dx: -1, dy: 0 }  // left
+        ];
+
+        for (const neighbor of neighbors) {
+            const nx = current.x + neighbor.dx;
+            const ny = current.y + neighbor.dy;
+            const neighborKey = `${nx},${ny}`;
+
+            // Skip if out of bounds or blocked
+            if (nx < 0 || nx >= GRID_SIZE || ny < 0 || ny >= GRID_SIZE) continue;
+            if (cityMap[ny][nx] === CELL_TYPES.BUILDING) continue;
+
+            // Skip if it's a danger zone - we want to completely avoid these
+            if (cityMap[ny][nx] === CELL_TYPES.DANGER_ZONE) continue;
+
+            // Skip if there's a mobile obstacle
+            if (mobileObstacles.some(obs => obs.x === nx && obs.y === ny)) continue;
+
+            // Skip if already in closed set
+            if (closedSet.has(neighborKey)) continue;
+
+            // Calculate tentative gScore
+            const tentativeGScore = (gScore.get(current.key) || 0) + 1;
+
+            // Check if this neighbor is not in open set or has a better score
+            const neighborInOpenSet = openSet.find(node => node.key === neighborKey);
+            if (!neighborInOpenSet || tentativeGScore < (gScore.get(neighborKey) || Infinity)) {
+                // Update path and scores
+                cameFrom.set(neighborKey, current);
+                gScore.set(neighborKey, tentativeGScore);
+                fScore.set(neighborKey, tentativeGScore + calculateDistance(nx, ny, targetX, targetY));
+
+                // Add to open set if not already there
+                if (!neighborInOpenSet) {
+                    openSet.push({ x: nx, y: ny, key: neighborKey });
+                }
+            }
+        }
+    }
+
+    // No path found
+    return null;
+}
+
+// Reconstruct path from A* result
+function reconstructPath(cameFrom, current) {
+    const path = [current];
+    let currentKey = current.key;
+
+    while (cameFrom.has(currentKey)) {
+        current = cameFrom.get(currentKey);
+        currentKey = current.key;
+        path.unshift(current);
+    }
+
+    // Return the path (excluding the starting position)
+    return path.slice(1);
+}
+
+// Move towards a target using A* pathfinding
 function moveTowardsTarget(targetX, targetY) {
     // Check if we've reached the target
     if (ROBOT.position.x === targetX && ROBOT.position.y === targetY) {
@@ -686,62 +939,34 @@ function moveTowardsTarget(targetX, targetY) {
         return;
     }
 
-    // Determine the direction to move
-    const dx = Math.sign(targetX - ROBOT.position.x);
-    const dy = Math.sign(targetY - ROBOT.position.y);
+    // Find the optimal path using A*
+    const path = findPath(ROBOT.position.x, ROBOT.position.y, targetX, targetY);
 
-    // Check if there are obstacles in the preferred direction
-    const horizontalBlocked = isPathBlocked(ROBOT.position.x + dx, ROBOT.position.y);
-    const verticalBlocked = isPathBlocked(ROBOT.position.x, ROBOT.position.y + dy);
+    if (path && path.length > 0) {
+        // Get the next step in the path
+        const nextStep = path[0];
 
-    // Check if moving in the preferred directions would lead to a recently visited position
-    const horizontalRecentlyVisited = ROBOT.recentPositions.some(pos =>
-        pos.x === ROBOT.position.x + dx && pos.y === ROBOT.position.y
-    );
+        // Calculate the direction to move
+        const dx = nextStep.x - ROBOT.position.x;
+        const dy = nextStep.y - ROBOT.position.y;
 
-    const verticalRecentlyVisited = ROBOT.recentPositions.some(pos =>
-        pos.x === ROBOT.position.x && pos.y === ROBOT.position.y + dy
-    );
-
-    // Detect if we're potentially in a loop
-    const potentialLoop = ROBOT.recentPositions.length >= 3 &&
-        ROBOT.recentPositions.some((pos, index) =>
-            index > 0 && pos.x === ROBOT.position.x && pos.y === ROBOT.position.y
-        );
-
-    if (potentialLoop) {
-        // If we detect a potential loop, try a completely different approach
-        logDecision('Potential movement loop detected. Trying a different approach.');
-
-        // Clear recent positions to allow fresh pathfinding
-        ROBOT.recentPositions = [];
-
-        // Try alternative directions with a clean slate
-        tryAlternativeDirection(targetX, targetY);
-        return;
-    }
-
-    // Decide which direction to move based on obstacles, recent visits, and distance
-    if (Math.abs(targetX - ROBOT.position.x) > Math.abs(targetY - ROBOT.position.y)) {
-        // Prefer horizontal movement
-        if (!horizontalBlocked && !horizontalRecentlyVisited && dx !== 0) {
-            moveRobot(dx, 0);
-        } else if (!verticalBlocked && !verticalRecentlyVisited && dy !== 0) {
-            moveRobot(0, dy);
-        } else {
-            // Try alternative directions
+        // Check if the next step is blocked by a mobile obstacle that wasn't there during pathfinding
+        if (mobileObstacles.some(obs => obs.x === nextStep.x && obs.y === nextStep.y)) {
+            logDecision(`Path blocked by a mobile obstacle. Recalculating route.`);
+            // Try to find an alternative direction
             tryAlternativeDirection(targetX, targetY);
+            return;
         }
+
+        // Move in the calculated direction
+        moveRobot(dx, dy);
+
+        // Log the path decision
+        logDecision(`Moving along optimal path to (${targetX}, ${targetY}). Next step: (${nextStep.x}, ${nextStep.y})`);
     } else {
-        // Prefer vertical movement
-        if (!verticalBlocked && !verticalRecentlyVisited && dy !== 0) {
-            moveRobot(0, dy);
-        } else if (!horizontalBlocked && !horizontalRecentlyVisited && dx !== 0) {
-            moveRobot(dx, 0);
-        } else {
-            // Try alternative directions
-            tryAlternativeDirection(targetX, targetY);
-        }
+        // If no path is found, try alternative approach
+        logDecision(`No clear path to target (${targetX}, ${targetY}). Trying alternative approach.`);
+        tryAlternativeDirection(targetX, targetY);
     }
 }
 
