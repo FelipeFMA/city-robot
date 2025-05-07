@@ -11,18 +11,6 @@
 
 A sophisticated web-based simulation of an autonomous robot navigating through a 12x12 city grid, making intelligent decisions, managing resources, and completing delivery missions.
 
-## 📋 Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [Robot AI Logic](#robot-ai-logic)
-- [City Environment](#city-environment)
-- [Resource Management](#resource-management)
-- [Pathfinding Algorithm](#pathfinding-algorithm)
-- [User Interface](#user-interface)
-- [Controls](#controls)
-- [Installation](#installation)
-- [Usage](#usage)
 
 ## 🌟 Overview
 
